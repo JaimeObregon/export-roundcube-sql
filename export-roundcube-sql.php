@@ -85,7 +85,7 @@ if ($version['value'] !== ROUNDCUBE_VERSION) {
 $data = $queries = array();
 $queries[] = 'SET NAMES UTF8;';
 
-$results = $mysqli->query('SELECT * FROM users WHERE username LIKE "%@' . $argv[3] . '"');
+$results = $mysqli->query('SELECT * FROM users WHERE username LIKE "%' . $argv[3] . '"');
 while ($row = $results->fetch_assoc()) {
   $data['users'][] = $row;
 }
