@@ -33,7 +33,7 @@ function format($query, $array, $replacements = array()) {
 
   foreach ($array as $key => $value) {
     if ($key !== '__md5') {
-      $keys[] = "`$key`";
+      $keys[] = "$key";
       $escapedValue = sprintf('"%s"', $mysqli->real_escape_string($value));
       $values[] = in_array($key, array_keys($replacements)) ? $replacements[$key] : $escapedValue;
     }
