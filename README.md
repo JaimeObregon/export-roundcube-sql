@@ -4,7 +4,7 @@ Exports Roundcube webmail configuration (users, identities, contacts, groups...)
 
 This script reads all the registers (i.e, users, contacts, groups...) from a given domain in a Roundcube database, and outputs the required SQL queries to reproduce them in a different Roundcube database without facing primary key conflicts, thus easing the migration of user data from one installation to another.
 
-It has been tested with Roundcube version 2013011000 (as seen with ``SELECT `value` FROM system WHERE `name` = "roundcube-version"``).
+It has been tested with Roundcube versions 2015030800 and 2013011000 (as seen with ``SELECT `value` FROM system WHERE `name` = "roundcube-version"``). There are great chances it will work too with all other versions in-between.
 
 
 Usage
@@ -17,6 +17,13 @@ Example (in a Parallels Plesk setup):
 	$php export-roundcube-sql.php admin `cat /etc/psa/.psa.shadow` mydomain.com > dump.sql
 
 Then run dump.sql on your target database.
+
+
+Troubleshooting
+===============
+
+* **Problem:** Getting `Duplicate entry 'xxxxxxxxxxxxx' for key 'username'` when running the generated queries on the target server.
+  **Solution:** The script assumes no identities/contacts exist on the target machine. As Roundcube may generate some registers upon first login, this may lead to conflicts. Delete these identities/contacts from the target database and re-run the queries.
 
 
 Additional info
