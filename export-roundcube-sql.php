@@ -17,8 +17,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-define('VERSION', '0.1');
-define('ROUNDCUBE_VERSION', '2013011000');
+define('VERSION', '0.2');
+define('ROUNDCUBE_VERSION_MIN', '2013011000');
+define('ROUNDCUBE_VERSION_MAX', '2015030800');
 define('ROUNDCUBE_DATABASE', 'roundcubemail');
 define('DATABASE_HOST', 'localhost');
 
@@ -73,8 +74,8 @@ $mysqli->query('SET NAMES UTF8');
  */
 $results = $mysqli->query('SELECT `value` FROM system WHERE `name` = "roundcube-version"');
 $version = $results->fetch_assoc();
-if ($version['value'] !== ROUNDCUBE_VERSION) {
-  $message = sprintf("This is not the Roundcube version for which I was designed (%s). See README.txt for details.", ROUNDCUBE_VERSION);
+if ($version['value'] < ROUNDCUBE_VERSION_MIN OR $version['value'] > ROUNDCUBE_VERSION_MAX) {
+  $message = sprintf("This (%s) is not the Roundcube version for which I was designed. See README.txt for details.", $version['value']);
   die("$message\n");
 }
 
@@ -130,15 +131,16 @@ foreach ($data['users'] as $user) {
  */
 foreach ($data['users'] as $user) {
   
-  $query = 'INSERT INTO users (%s) VALUES (%s);';
+  $query = 'INSERT INTO users (%s) VALUES (%s) ON DUPLICATE KEY UPDATE user_id=LAST_INSERT_ID(user_id);';
   $queries[] = format($query, $user, array('user_id' => 'NULL'));
+  $queries[] = 'SET @lastUser := LAST_INSERT_ID();';
 
   if (!empty($data['identities'][$user['user_id']])) {
     foreach ($data['identities'][$user['user_id']] as $identity) {
       $query = 'INSERT INTO identities (%s) VALUES (%s);';
       $queries[] = format($query, $identity, array(
         'identity_id' => 'NULL',
-        'user_id' => '(SELECT MAX(user_id) FROM users)')
+        'user_id' => '@lastUser')
       );
     }
   }
@@ -148,19 +150,20 @@ foreach ($data['users'] as $user) {
       $query = 'INSERT INTO contacts (%s) VALUES (%s);';
       $queries[] = format($query, $contact, array(
         'contact_id' => 'NULL',
-        'user_id' => '(SELECT MAX(user_id) FROM users)',
-        '__md5' => FALSE)
+        'user_id' => '@lastUser',
+        '__md5' => false)
       );
     }
   }
 
   if (!empty($data['contactgroups'][$user['user_id']])) {
     foreach ($data['contactgroups'][$user['user_id']] as $contactgroup) {
-      $query = 'INSERT INTO contactgroups (%s) VALUES (%s);';
+      $query = 'INSERT INTO contactgroups (%s) VALUES (%s) ON DUPLICATE KEY UPDATE contactgroup_id=LAST_INSERT_ID(contactgroup_id);';
       $queries[] = format($query, $contactgroup, array(
         'contactgroup_id' => 'NULL',
-        'user_id' => '(SELECT MAX(user_id) FROM users)')
+        'user_id' => '@lastUser')
       );
+      $queries[] = 'SET @lastGroup := LAST_INSERT_ID();';
 
       if (!empty($data['contactgroupmembers'][$user['user_id']][$contactgroup['contactgroup_id']])) {
         foreach ($data['contactgroupmembers'][$user['user_id']][$contactgroup['contactgroup_id']] as $contactgroupmember) {
@@ -170,7 +173,7 @@ foreach ($data['users'] as $user) {
           $contact_id = sprintf($template, $data['contacts'][$user['user_id']][$contactgroupmember['contact_id']]['__md5']);
           $replacements = array(
             'contactgroupmember_id' => 'NULL',
-            'contactgroup_id' => '(SELECT MAX(contactgroup_id) FROM contactgroups)',
+            'contactgroup_id' => '@lastGroup',
             'contact_id' => $contact_id,
           ); 
           $queries[] = format($query, $contactgroupmember, $replacements);
